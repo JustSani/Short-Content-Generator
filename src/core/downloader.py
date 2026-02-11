@@ -16,13 +16,18 @@ def download_video_core(url: str) -> dict:
 
     # Configurazione di yt-dlp
     ydl_opts = {
-        'format': 'bestvideo+bestaudio/best', # Miglior qualità possibile
-        'outtmpl': os.path.join(DOWNLOAD_DIR, '%(title)s.%(ext)s'), # Nome file = Titolo video
-        'quiet': True,             # Meno output nel terminale (gestiamo noi i messaggi)
-        'no_warnings': True,
-        'restrictfilenames': True, # Rimuove caratteri strani dal nome file
-    }
-
+            'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',
+            'outtmpl': os.path.join(BASE_DIR, '%(title)s.%(ext)s'),
+            'merge_output_format': 'mp4',
+            
+            # --- FIX PER IL TIMEOUT ---
+            'socket_timeout': 60,          # Aspetta 60 secondi invece di arrendersi subito
+            'source_address': '0.0.0.0',   # Forza l'uso di IPv4 (Risolve il 99% dei timeout)
+            'extractor_retries': 3,        # Riprova 3 volte se fallisce
+            'http_headers': {              # Finge di essere un browser Chrome su Windows
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+            }
+        }
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             # 1. Estraiamo le info prima di scaricare per avere il titolo
