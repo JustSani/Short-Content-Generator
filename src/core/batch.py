@@ -2,7 +2,6 @@ import json
 import os
 import time
 from rich.console import Console
-from rich.table import Table
 
 # Importiamo i nostri moduli esistenti
 from src.core.writer import generate_script_core, save_script_to_file
@@ -13,6 +12,10 @@ from src.core.narrator import add_narration_core
 
 console = Console()
 JOBS_FILE = "jobs.json"
+
+# --- CALCOLO CARTELLA RADICE DEL PROGETTO ---
+# Risale di 3 livelli da: src/core/batch.py -> src/core -> src -> PROJECT_ROOT
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 def load_jobs():
     if not os.path.exists(JOBS_FILE):
@@ -42,7 +45,6 @@ def run_batch_process():
 
     console.print(f"[bold cyan]🏭 Avvio Factory Mode: {len(pending_jobs)} video in coda...[/bold cyan]")
 
-    # Iteriamo usando l'indice originale per aggiornare il JSON correttamente
     for i, job in enumerate(jobs):
         if job.get("status") != "pending":
             continue
@@ -57,11 +59,10 @@ def run_batch_process():
                 raise Exception(f"Errore AI: {res_write['error']}")
             
             script_data = res_write["data"]
-            # Salviamo il JSON della storia per riferimento futuro
             script_path = save_script_to_file(job["topic"], script_data)
             console.print(f"      📝 Script salvato: {os.path.basename(script_path)}")
 
-            # --- STEP 2: ACQUISIZIONE VIDEO ---
+            # --- STEP 2: ACQUISIZIONE VIDEO (FIX PATH RELATIVI) ---
             source = job["source"]
             current_video = source
             
@@ -72,11 +73,27 @@ def run_batch_process():
                     raise Exception(f"Errore Download: {res_dl['error']}")
                 current_video = res_dl["path"]
             else:
-                console.print(f"[2/5] 📂 Uso file locale...")
-                if not os.path.exists(source):
-                    raise Exception(f"File locale non trovato: {source}")
+                console.print(f"[2/5] 📂 Rilevamento file locale...")
+                
+                # --- LOGICA INTELLIGENTE PER I PATH ---
+                # 1. Puliamo il percorso da virgolette o slash iniziali inutili
+                clean_source = source.strip('"').strip("'").lstrip("/").lstrip("\\")
+                
+                # 2. Costruiamo il percorso assoluto partendo dalla root del progetto
+                abs_path_from_root = os.path.join(BASE_DIR, clean_source)
+                
+                # 3. Cerchiamo il file
+                if os.path.exists(abs_path_from_root):
+                    current_video = abs_path_from_root
+                    console.print(f"      📍 Trovato in: [dim]{current_video}[/dim]")
+                elif os.path.exists(source):
+                    # Fallback: magari l'utente ha messo un path assoluto (C:\...)
+                    current_video = source
+                    console.print(f"      📍 Trovato (path assoluto): [dim]{current_video}[/dim]")
+                else:
+                    raise Exception(f"File non trovato! Cercato in:\n - {abs_path_from_root}\n - {source}")
 
-            # --- STEP 3: TAGLIO (Opzionale) ---
+            # --- STEP 3: TAGLIO ---
             if job.get("start") and job.get("end"):
                 console.print(f"[3/5] ✂️  Taglio clip ({job['start']} - {job['end']})...")
                 res_cut = cut_video_interval_core(current_video, job["start"], job["end"])
@@ -93,9 +110,9 @@ def run_batch_process():
                 raise Exception(f"Errore Resize: {res_resize['error']}")
             current_video = res_resize["path"]
 
-            # --- STEP 5: NARRAZIONE + SOTTOTITOLI (Whisper) ---
+            # --- STEP 5: NARRAZIONE + SOTTOTITOLI ---
             console.print(f"[5/5] 🎙️  Doppiaggio e Sottotitoli (Whisper)...")
-            res_narrate = add_narration_core(current_video, script_data) # Passiamo direttamente il DIZIONARIO, non il file path
+            res_narrate = add_narration_core(current_video, script_data)
             if not res_narrate["success"]:
                 raise Exception(f"Errore Narratore: {res_narrate['error']}")
             
@@ -108,5 +125,4 @@ def run_batch_process():
         except Exception as e:
             console.print(f"[bold red]❌ FALLIMENTO JOB #{i+1}: {str(e)}[/bold red]")
             update_job_status(i, "error", str(e))
-            # Continua con il prossimo lavoro, non fermare tutta la fabbrica!
             continue

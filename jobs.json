@@ -1,82 +1,93 @@
 [
-{
-"status": "pending",
-"topic": "La teoria scioccante sul finale di Adventure Time",
-"source": "C:\\Users\\fabio\\Desktop\\Desktop\\Vallauri\\Progetti\\Short-Content-Generator\\data\\raw\\minecraft_parkouir1.mp4",
-"start": "00:05:00",
-"end": "00:06:20",
-"notes": "Teoria horror cartoni"
-},
-{
-"status": "pending",
-"topic": "Perché Leone il Cane Fifone viveva davvero nel nulla?",
-"source": "C:\\Users\\fabio\\Desktop\\Desktop\\Vallauri\\Progetti\\Short-Content-Generator\\data\\raw\\minecraft_parkouir1.mp4",
-"start": "00:20:15",
-"end": "00:21:40",
-"notes": "Curiosità horror serie tv"
-},
-{
-"status": "pending",
-"topic": "Il dettaglio inquietante che non hai notato in Coraline",
-"source": "C:\\Users\\fabio\\Desktop\\Desktop\\Vallauri\\Progetti\\Short-Content-Generator\\data\\raw\\minecraft_parkouir1.mp4",
-"start": "00:35:10",
-"end": "00:36:30",
-"notes": "Analisi film cinema"
-},
-{
-"status": "pending",
-"topic": "La vera storia del papà di Andy in Toy Story",
-"source": "C:\\Users\\fabio\\Desktop\\Desktop\\Vallauri\\Progetti\\Short-Content-Generator\\data\\raw\\minecraft_parkouir1.mp4",
-"start": "00:50:00",
-"end": "00:51:25",
-"notes": "Curiosità Pixar"
-},
-{
-"status": "pending",
-"topic": "I 7 Peccati Capitali nascosti in SpongeBob SquarePants",
-"source": "C:\\Users\\fabio\\Desktop\\Desktop\\Vallauri\\Progetti\\Short-Content-Generator\\data\\raw\\minecraft_parkouir1.mp4",
-"start": "01:05:40",
-"end": "01:07:00",
-"notes": "Teoria dark cartoni"
-},
-{
-"status": "pending",
-"topic": "La persona reale che ha ispirato il mostro di Shrek",
-"source": "C:\\Users\\fabio\\Desktop\\Desktop\\Vallauri\\Progetti\\Short-Content-Generator\\data\\raw\\minecraft_parkouir1.mp4",
-"start": "01:20:00",
-"end": "01:21:30",
-"notes": "Curiosità cinema"
-},
-{
-"status": "pending",
-"topic": "Il messaggio subliminale vietato nei classici Disney",
-"source": "C:\\Users\\fabio\\Desktop\\Desktop\\Vallauri\\Progetti\\Short-Content-Generator\\data\\raw\\minecraft_parkouir1.mp4",
-"start": "01:35:15",
-"end": "01:36:40",
-"notes": "Easter eggs film"
-},
-{
-"status": "pending",
-"topic": "Harry Potter ha immaginato tutto? La teoria del manicomio",
-"source": "C:\\Users\\fabio\\Desktop\\Desktop\\Vallauri\\Progetti\\Short-Content-Generator\\data\\raw\\minecraft_parkouir1.mp4",
-"start": "01:50:10",
-"end": "01:51:35",
-"notes": "Teoria fan cinema"
-},
-{
-"status": "pending",
-"topic": "Perché Winnie the Pooh rappresenta i disturbi mentali",
-"source": "C:\\Users\\fabio\\Desktop\\Desktop\\Vallauri\\Progetti\\Short-Content-Generator\\data\\raw\\minecraft_parkouir1.mp4",
-"start": "02:05:00",
-"end": "02:06:20",
-"notes": "Analisi psicologica cartoni"
-},
-{
-"status": "pending",
-"topic": "La maledizione del set de L'Esorcista: fatti reali",
-"source": "C:\\Users\\fabio\\Desktop\\Desktop\\Vallauri\\Progetti\\Short-Content-Generator\\data\\raw\\minecraft_parkouir1.mp4",
-"start": "02:20:00",
-"end": "02:21:25",
-"notes": "Curiosità horror cinema"
-}
+    {
+        "status": "error",
+        "topic": "La teoria scioccante sul finale di Adventure Time",
+        "source": "data/raw/minecraft1.mp4",
+        "start": "00:05:00",
+        "end": "00:06:20",
+        "notes": "Teoria horror cartoni",
+        "error": "File locale non trovato: data/raw/minecraft1.mp4",
+        "last_update": "2026-02-16 23:01:52"
+    },
+    {
+        "status": "done",
+        "topic": "Perché Leone il Cane Fifone viveva davvero nel nulla?",
+        "source": "data/raw/minecraft1.mp4",
+        "start": "00:20:15",
+        "end": "00:21:40",
+        "notes": "Curiosità horror serie tv",
+        "last_update": "2026-02-16 23:09:21"
+    },
+    {
+        "status": "done",
+        "topic": "Il dettaglio inquietante che non hai notato in Coraline",
+        "source": "data/raw/minecraft1.mp4",
+        "start": "00:35:10",
+        "end": "00:36:30",
+        "notes": "Analisi film cinema",
+        "last_update": "2026-02-16 23:12:07"
+    },
+    {
+        "status": "done",
+        "topic": "La vera storia del papà di Andy in Toy Story",
+        "source": "data/raw/minecraft1.mp4",
+        "start": "00:50:00",
+        "end": "00:51:25",
+        "notes": "Curiosità Pixar",
+        "last_update": "2026-02-16 23:14:56"
+    },
+    {
+        "status": "done",
+        "topic": "I 7 Peccati Capitali nascosti in SpongeBob SquarePants",
+        "source": "data/raw/minecraft1.mp4",
+        "start": "01:05:40",
+        "end": "01:07:00",
+        "notes": "Teoria dark cartoni",
+        "last_update": "2026-02-16 23:17:48"
+    },
+    {
+        "status": "done",
+        "topic": "La persona reale che ha ispirato il mostro di Shrek",
+        "source": "data/raw/minecraft1.mp4",
+        "start": "01:20:00",
+        "end": "01:21:30",
+        "notes": "Curiosità cinema",
+        "last_update": "2026-02-16 23:21:29"
+    },
+    {
+        "status": "done",
+        "topic": "Il messaggio subliminale vietato nei classici Disney",
+        "source": "data/raw/minecraft1.mp4",
+        "start": "01:35:15",
+        "end": "01:36:40",
+        "notes": "Easter eggs film",
+        "last_update": "2026-02-16 23:24:36"
+    },
+    {
+        "status": "done",
+        "topic": "Harry Potter ha immaginato tutto? La teoria del manicomio",
+        "source": "data/raw/minecraft1.mp4",
+        "start": "01:50:10",
+        "end": "01:51:35",
+        "notes": "Teoria fan cinema",
+        "last_update": "2026-02-16 23:27:36"
+    },
+    {
+        "status": "done",
+        "topic": "Perché Winnie the Pooh rappresenta i disturbi mentali",
+        "source": "data/raw/minecraft1.mp4",
+        "start": "02:05:00",
+        "end": "02:06:20",
+        "notes": "Analisi psicologica cartoni",
+        "last_update": "2026-02-16 23:30:51"
+    },
+    {
+        "status": "done",
+        "topic": "La maledizione del set de L'Esorcista: fatti reali",
+        "source": "data/raw/minecraft1.mp4",
+        "start": "02:20:00",
+        "end": "02:21:25",
+        "notes": "Curiosità horror cinema",
+        "last_update": "2026-02-16 23:34:06"
+    }
 ]
