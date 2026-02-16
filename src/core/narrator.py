@@ -4,6 +4,7 @@ import subprocess
 import re
 import json
 import edge_tts
+from faster_whisper import WhisperModel
 from src.utils.naming import get_step_filename
 
 # --- CONFIGURAZIONI ---
@@ -12,19 +13,21 @@ PROCESSED_DIR = os.path.join(BASE_DIR, "data", "processed")
 TEMP_DIR = os.path.join(BASE_DIR, "data", "temp")
 FONTS_DIR_ABS = os.path.join(BASE_DIR, "assets", "fonts")
 
+# Config Audio
 VOICE = "it-IT-GiuseppeMultilingualNeural"
 RATE = "+42%"
 PITCH = "-14Hz"
 
+# Config Whisper (Modello 'medium' è il miglior compromesso tra precisione e velocità)
+WHISPER_MODEL_SIZE = "medium" 
+# Se hai una scheda video NVIDIA, metti device="cuda". Se no lascia "cpu" (è veloce comunque con faster-whisper)
+WHISPER_DEVICE = "cpu" 
+
 def clean_text_display(text: str) -> str:
-    text = re.sub(r'[^\w\s\']', '', text) 
+    """Pulisce il testo per la visualizzazione a video (mantiene accenti e apostrofi)"""
     return text.strip()
 
-def split_into_sentences(text: str):
-    sentences = re.split(r'(?<=[.?!])\s+', text)
-    return [s.strip() for s in sentences if s.strip()]
-
-async def generate_chunk_audio(text: str, output_path: str):
+async def generate_full_audio(text: str, output_path: str):
     communicate = edge_tts.Communicate(text, VOICE, rate=RATE, pitch=PITCH)
     await communicate.save(output_path)
 
@@ -39,14 +42,42 @@ def get_audio_duration(file_path: str) -> float:
     except Exception:
         return 0.0
 
-# --- NUOVO FORMATO TEMPO PER FILE .ASS ---
 def fmt_time_ass(t):
     """Formatta il tempo per il file ASS: H:MM:SS.cs"""
     hours = int(t / 3600)
     mins = int((t % 3600) / 60)
     secs = int(t % 60)
-    centis = int((t - int(t)) * 100) # Centesimi di secondo
+    centis = int((t - int(t)) * 100)
     return f"{hours}:{mins:02}:{secs:02}.{centis:02}"
+
+def transcribe_audio_with_whisper(audio_path: str, offset_seconds: float):
+    """
+    Usa Whisper per ottenere i timestamp precisi di ogni parola.
+    Applica un offset temporale (perché l'audio del corpo parte dopo il titolo).
+    """
+    print(f"   ...Caricamento modello Whisper ({WHISPER_MODEL_SIZE})...")
+    model = WhisperModel(WHISPER_MODEL_SIZE, device=WHISPER_DEVICE, compute_type="int8")
+
+    print("   ...Trascrizione e allineamento in corso...")
+    segments, _ = model.transcribe(audio_path, word_timestamps=True, language="it")
+
+    word_timings = []
+    
+    for segment in segments:
+        for word in segment.words:
+            # Whisper ci dà start ed end relativi all'inizio del file audio
+            # Noi aggiungiamo l'offset (durata titolo + pausa)
+            start_t = word.start + offset_seconds
+            end_t = word.end + offset_seconds
+            text = word.word.strip().upper() # Convertiamo in maiuscolo
+            
+            # Filtro per rimuovere punteggiatura isolata se Whisper la separa
+            if text in [".", ",", "!", "?", ":", ";"]:
+                continue
+                
+            word_timings.append((start_t, end_t, text))
+
+    return word_timings
 
 def add_narration_core(video_path: str, text_input) -> dict:
     if not os.path.exists(video_path):
@@ -84,71 +115,49 @@ def add_narration_core(video_path: str, text_input) -> dict:
     output_filename = get_step_filename(video_path, "NARRATED")
     output_path = os.path.join(PROCESSED_DIR, output_filename)
     
-    final_audio_path = os.path.join(TEMP_DIR, "full_narration.mp3")
-    ass_path = os.path.join(TEMP_DIR, "subtitles.ass") # UNICO FILE ASS
+    # Percorsi file temporanei
+    title_audio_path = os.path.join(TEMP_DIR, "title.mp3")
+    body_audio_path = os.path.join(TEMP_DIR, "body.mp3")
+    final_audio_path = os.path.join(TEMP_DIR, "final_audio.mp3")
+    ass_path = os.path.join(TEMP_DIR, "subtitles.ass")
 
     try:
-        word_timings = []
-        total_time_cursor = 0.0
-        
+        # --- 1. GENERAZIONE AUDIO ---
         concat_list_path = os.path.join(TEMP_DIR, "concat_list.txt")
         concat_file = open(concat_list_path, "w", encoding="utf-8")
-
-        # --- 1. GESTIONE TITOLO ---
+        
+        current_offset = 0.2 # Iniziamo a 0.2s per sicurezza (come richiesto)
+        
+        # Genera Titolo
         if title_text:
-            title_audio_path = os.path.join(TEMP_DIR, "title.mp3")
-            asyncio.run(generate_chunk_audio(title_text, title_audio_path))
-            title_duration = get_audio_duration(title_audio_path)
+            asyncio.run(generate_full_audio(title_text, title_audio_path))
+            title_dur = get_audio_duration(title_audio_path)
             concat_file.write(f"file 'title.mp3'\n")
-            total_time_cursor += title_duration + 0.4 
             
-        # --- 2. GESTIONE CORPO ---
-        sentences = split_into_sentences(body_text)
-        for idx, sentence in enumerate(sentences):
-            chunk_filename = f"chunk_{idx}.mp3"
-            chunk_path = os.path.join(TEMP_DIR, chunk_filename)
-            asyncio.run(generate_chunk_audio(sentence, chunk_path))
-            duration = get_audio_duration(chunk_path)
+            # Aggiungi silenzio/pausa dopo il titolo (es. 0.5s)
+            silence_path = os.path.join(TEMP_DIR, "silence.mp3")
+            subprocess.run(["ffmpeg", "-y", "-f", "lavfi", "-i", "anullsrc=r=24000:cl=mono", "-t", "0.5", silence_path], 
+                           check=True, capture_output=True)
+            concat_file.write(f"file 'silence.mp3'\n")
             
-            words = sentence.split()
-            # Calcolo pesi (inline per brevità)
-            cleaned_words = [clean_text_display(w) for w in words]
-            weights = []
-            for w, cw in zip(words, cleaned_words):
-                weight = len(cw)
-                if len(cw) <= 3: weight *= 0.6
-                elif len(cw) >= 8: weight *= 1.4
-                if w.endswith('.') or w.endswith('?') or w.endswith('!'): weight += 4
-                elif w.endswith(','): weight += 2
-                weights.append(weight)
-
-            total_weight = sum(weights)
-            current_time = total_time_cursor
-
-            if total_weight > 0 and duration > 0:
-                for i, cw in enumerate(cleaned_words):
-                    segment_duration = max(0.1, (weights[i] / total_weight) * duration)
-                    end = current_time + segment_duration
-                    word_timings.append((current_time, end, cw.upper()))
-                    current_time = end
-
-            total_time_cursor += duration
-            concat_file.write(f"file '{chunk_filename}'\n")
-
+            current_offset += title_dur + 0.5 # Aggiorniamo l'offset per il corpo
+            
+        # Genera Corpo (Tutto in un file per far capire il contesto a Whisper)
+        asyncio.run(generate_full_audio(body_text, body_audio_path))
+        concat_file.write(f"file 'body.mp3'\n")
         concat_file.close()
 
-        # --- 3. UNIONE AUDIO ---
-        concat_cmd = [
+        # Unisci tutto l'audio
+        subprocess.run([
             "ffmpeg", "-y", "-f", "concat", "-safe", "0",
             "-i", concat_list_path, "-c", "copy", final_audio_path
-        ]
-        subprocess.run(concat_cmd, check=True, capture_output=True)
+        ], check=True, capture_output=True)
 
-        # --- 4. GENERAZIONE FILE .ASS (La VERA MAGIA GRAFICA) ---
-        # Dato che la tela ora è 1080x1920, la dimensione "15" di prima equivale a circa "60" qui.
-        # Alignment 8 = In alto al centro. Alignment 5 = Centro esatto.
-        
-        # ⚠️ NOME FONT: Se "The Bold Font" continua a non andare, scrivi "Impact" al suo posto
+        # --- 2. TRASCRIZIONE CON WHISPER (La Magia) ---
+        # Analizziamo SOLO il file del corpo, ma applichiamo l'offset calcolato prima
+        word_timings = transcribe_audio_with_whisper(body_audio_path, current_offset)
+
+        # --- 3. CREAZIONE FILE .ASS (Stili Originali) ---
         FONT_NAME = "The Bold Font"
 
         with open(ass_path, "w", encoding="utf-8") as f:
@@ -161,25 +170,28 @@ def add_narration_core(video_path: str, text_input) -> dict:
             f.write("[V4+ Styles]\n")
             f.write("Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\n")
             # Stile Titolo (Giallo, Outline nero sottile, Alto Centro con margine 150 dal top)
-            f.write(f"Style: TitleStyle,{FONT_NAME},150,&H0000FFFF,&H000000FF,&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,10,0,8,0,0,150,1\n")
+            f.write(f"Style: TitleStyle,{FONT_NAME},120,&H0000FFFF,&H000000FF,&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,10,0,8,0,0,150,1\n")
             # Stile Corpo (Bianco, Outline nero sottile, Centro Assoluto con margine 0)
             f.write(f"Style: BodyStyle,{FONT_NAME},100,&H00FFFFFF,&H000000FF,&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,10,0,5,0,0,0,1\n\n")
 
             f.write("[Events]\n")
             f.write("Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n")
+            
             if title_text:
-                f.write(f"Dialogue: 0,0:00:00.00,9:59:59.99,TitleStyle,,0,0,0,,{title_text.upper()}\n")
+                # Il titolo parte a 0.2s e rimane per sempre
+                f.write(f"Dialogue: 0,0:00:00.20,9:59:59.99,TitleStyle,,0,0,0,,{title_text.upper()}\n")
+            
             for start, end, word_text in word_timings:
                 f.write(f"Dialogue: 0,{fmt_time_ass(start)},{fmt_time_ass(end)},BodyStyle,,0,0,0,,{word_text}\n")
 
-        # --- 5. MERGE VIDEO ---
+        # --- 4. MERGE VIDEO ---
         ass_path_safe = ass_path.replace("\\", "/").replace(":", "\\:")
         fonts_dir_safe = FONTS_DIR_ABS.replace("\\", "/").replace(":", "\\:")
         
-        # Il filtro diventa semplicissimo: usa il file ASS e cerca i font nella cartella.
+        # Aggiungiamo un ritardo di 200ms all'audio finale per matchare l'inizio del video
         filter_complex = (
             f"[0:v]ass='{ass_path_safe}':fontsdir='{fonts_dir_safe}'[v_out];"
-            f"[1:a]volume=1.2[a_out]"
+            f"[1:a]adelay=200|200,volume=1.2[a_out]"
         )
 
         cmd = [

@@ -6,8 +6,8 @@ py main.py download youtube "https://www.youtube.com/watch?v=u7kdVe8q5zs"
 
 py main.py cut interval --start 00:10 --end 01:05
 py main.py resize vertical
-py main.py narrate set-text "stories/tradimento.txt"
-py main.py narrate process
+//py main.py narrate set-text "stories/tradimento.txt"
+py main.py narrate process -t "stories/tiktok1.json"
 py main.py play start
 py main.py play start "data/raw/data/processed/Minecraft_Parkour_Gameplay_No_Copyright_cut_00-10_01-05.mp4"
 
@@ -19,18 +19,7 @@ py main.py manage show
 py main.py create "data/raw/minecraft1.webm" -s "00:01:10" -e "00:02:10" -t "stories/test.json" -p
 
 
--------------------------------------------------------------------------------------------------------------------------------
-Scrivimi la parte 1 e parte 2 di una storia interessante per un video tiktok. Il formato di risposta che devi stampare deve essere 2 file .json separati da 5 caratteri - e basta.
 
-Il json è cosi strutturato:
 
-{
+py main.py batch run
 
-    "title": "I SEGRETI DEI POLPI",
-
-    "text": "Sapevi che i polpi hanno tre cuori? Due pompano sangue alle branchie, mentre il terzo lo fa circolare nel resto del corpo."
-
-}
-
-I video devono tenere estremamente alta l'attenzione senza momenti morit, catch frase iniziale che sarà il titolo, nessun commento banale o frase gia sentita:"Non crederete mai". Devi tenere l'attenzione alta.
--------------------------------------------------------------------------------------------------------------------------------

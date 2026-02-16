@@ -4,7 +4,7 @@ import os
 from rich.console import Console
 
 # Import moduli CLI
-from src.cli import download, resize, cut, narrate, play, manage
+from src.cli import download, resize, cut, narrate, play, manage,write, batch
 
 # Import funzioni CORE
 from src.core.downloader import download_video_core
@@ -13,6 +13,7 @@ from src.core.resizer import convert_to_vertical_core
 from src.core.narrator import add_narration_core
 from src.utils.state import save_state
 from src.utils.player import open_file_native
+
 
 app = typer.Typer(help="Content Automator CLI - Automazione contenuti 2026")
 console = Console()
@@ -24,6 +25,8 @@ app.add_typer(cut.app, name="cut", help="Taglia video")
 app.add_typer(narrate.app, name="narrate", help="Voce IA e Sottotitoli")
 app.add_typer(play.app, name="play", help="Riproduci video")
 app.add_typer(manage.app, name="manage", help="Gestione manuale dello stato")
+app.add_typer(write.app, name="write", help="Genera script con AI")
+app.add_typer(batch.app, name="batch", help="Gestione coda automatica (Factory Mode)")
 
 @app.command()
 def create(

@@ -17,7 +17,7 @@ def download_video_core(url: str) -> dict:
     # Configurazione di yt-dlp
     ydl_opts = {
             'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',
-            'outtmpl': os.path.join(BASE_DIR, '%(title)s.%(ext)s'),
+            'outtmpl': os.path.join(DOWNLOAD_DIR, '%(title)s_%(id)s.%(ext)s'),
             'merge_output_format': 'mp4',
             
             # --- FIX PER IL TIMEOUT ---
