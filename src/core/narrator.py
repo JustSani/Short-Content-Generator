@@ -3,6 +3,7 @@ import asyncio
 import subprocess
 import re
 import json
+import shutil
 import edge_tts
 from faster_whisper import WhisperModel
 from src.utils.naming import get_step_filename
@@ -10,6 +11,7 @@ from src.utils.naming import get_step_filename
 # --- CONFIGURAZIONI ---
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 PROCESSED_DIR = os.path.join(BASE_DIR, "data", "processed")
+READY_DIR = os.path.join(BASE_DIR, "data", "ready")
 TEMP_DIR = os.path.join(BASE_DIR, "data", "temp")
 FONTS_DIR_ABS = os.path.join(BASE_DIR, "assets", "fonts")
 
@@ -18,29 +20,17 @@ VOICE = "it-IT-GiuseppeMultilingualNeural"
 RATE = "+42%"
 PITCH = "-14Hz"
 
-# Config Whisper (Modello 'medium' è il miglior compromesso tra precisione e velocità)
+# Config Whisper
 WHISPER_MODEL_SIZE = "medium" 
-# Se hai una scheda video NVIDIA, metti device="cuda". Se no lascia "cpu" (è veloce comunque con faster-whisper)
 WHISPER_DEVICE = "cpu" 
 
 def clean_text_display(text: str) -> str:
-    """Pulisce il testo per la visualizzazione a video (mantiene accenti e apostrofi)"""
+    """Pulisce il testo per la visualizzazione a video"""
     return text.strip()
 
 async def generate_full_audio(text: str, output_path: str):
     communicate = edge_tts.Communicate(text, VOICE, rate=RATE, pitch=PITCH)
     await communicate.save(output_path)
-
-def get_audio_duration(file_path: str) -> float:
-    try:
-        cmd = [
-            "ffprobe", "-v", "error", "-show_entries", "format=duration",
-            "-of", "default=noprint_wrappers=1:nokey=1", file_path
-        ]
-        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
-        return float(result.stdout.strip())
-    except Exception:
-        return 0.0
 
 def fmt_time_ass(t):
     """Formatta il tempo per il file ASS: H:MM:SS.cs"""
@@ -53,7 +43,7 @@ def fmt_time_ass(t):
 def transcribe_audio_with_whisper(audio_path: str, offset_seconds: float):
     """
     Usa Whisper per ottenere i timestamp precisi di ogni parola.
-    Applica un offset temporale (perché l'audio del corpo parte dopo il titolo).
+    Applica un offset temporale.
     """
     print(f"   ...Caricamento modello Whisper ({WHISPER_MODEL_SIZE})...")
     model = WhisperModel(WHISPER_MODEL_SIZE, device=WHISPER_DEVICE, compute_type="int8")
@@ -65,13 +55,11 @@ def transcribe_audio_with_whisper(audio_path: str, offset_seconds: float):
     
     for segment in segments:
         for word in segment.words:
-            # Whisper ci dà start ed end relativi all'inizio del file audio
-            # Noi aggiungiamo l'offset (durata titolo + pausa)
             start_t = word.start + offset_seconds
             end_t = word.end + offset_seconds
-            text = word.word.strip().upper() # Convertiamo in maiuscolo
+            text = word.word.strip().upper() 
             
-            # Filtro per rimuovere punteggiatura isolata se Whisper la separa
+            # Filtro per rimuovere punteggiatura isolata
             if text in [".", ",", "!", "?", ":", ";"]:
                 continue
                 
@@ -108,77 +96,48 @@ def add_narration_core(video_path: str, text_input) -> dict:
     if not body_text:
         return {"success": False, "error": "Testo principale vuoto."}
 
+    # --- SETUP CARTELLE ---
     os.makedirs(TEMP_DIR, exist_ok=True)
-    os.makedirs(PROCESSED_DIR, exist_ok=True)
+    os.makedirs(READY_DIR, exist_ok=True)
     for f in os.listdir(TEMP_DIR): os.remove(os.path.join(TEMP_DIR, f))
 
     output_filename = get_step_filename(video_path, "NARRATED")
-    output_path = os.path.join(PROCESSED_DIR, output_filename)
+    output_path = os.path.join(READY_DIR, output_filename)
     
     # Percorsi file temporanei
-    title_audio_path = os.path.join(TEMP_DIR, "title.mp3")
-    body_audio_path = os.path.join(TEMP_DIR, "body.mp3")
     final_audio_path = os.path.join(TEMP_DIR, "final_audio.mp3")
     ass_path = os.path.join(TEMP_DIR, "subtitles.ass")
 
     try:
-        # --- 1. GENERAZIONE AUDIO ---
-        concat_list_path = os.path.join(TEMP_DIR, "concat_list.txt")
-        concat_file = open(concat_list_path, "w", encoding="utf-8")
-        
-        current_offset = 0.2 # Iniziamo a 0.2s per sicurezza (come richiesto)
-        
-        # Genera Titolo
-        if title_text:
-            asyncio.run(generate_full_audio(title_text, title_audio_path))
-            title_dur = get_audio_duration(title_audio_path)
-            concat_file.write(f"file 'title.mp3'\n")
-            
-            # Aggiungi silenzio/pausa dopo il titolo (es. 0.5s)
-            silence_path = os.path.join(TEMP_DIR, "silence.mp3")
-            subprocess.run(["ffmpeg", "-y", "-f", "lavfi", "-i", "anullsrc=r=24000:cl=mono", "-t", "0.5", silence_path], 
-                           check=True, capture_output=True)
-            concat_file.write(f"file 'silence.mp3'\n")
-            
-            current_offset += title_dur + 0.5 # Aggiorniamo l'offset per il corpo
-            
-        # Genera Corpo (Tutto in un file per far capire il contesto a Whisper)
-        asyncio.run(generate_full_audio(body_text, body_audio_path))
-        concat_file.write(f"file 'body.mp3'\n")
-        concat_file.close()
+        # --- 1. GENERAZIONE AUDIO (SOLO CORPO TESTO) ---
+        current_offset = 0.2
+        asyncio.run(generate_full_audio(body_text, final_audio_path))
 
-        # Unisci tutto l'audio
-        subprocess.run([
-            "ffmpeg", "-y", "-f", "concat", "-safe", "0",
-            "-i", concat_list_path, "-c", "copy", final_audio_path
-        ], check=True, capture_output=True)
+        # --- 2. TRASCRIZIONE CON WHISPER ---
+        word_timings = transcribe_audio_with_whisper(final_audio_path, current_offset)
 
-        # --- 2. TRASCRIZIONE CON WHISPER (La Magia) ---
-        # Analizziamo SOLO il file del corpo, ma applichiamo l'offset calcolato prima
-        word_timings = transcribe_audio_with_whisper(body_audio_path, current_offset)
-
-        # --- 3. CREAZIONE FILE .ASS (Stili Originali) ---
+        # --- 3. CREAZIONE FILE .ASS ---
         FONT_NAME = "The Bold Font"
 
         with open(ass_path, "w", encoding="utf-8") as f:
             f.write("[Script Info]\n")
             f.write("ScriptType: v4.00+\n")
-            f.write("PlayResX: 1080\n")  # FONDAMENTALE: Dichiariamo le dimensioni del video!
+            f.write("PlayResX: 1080\n")
             f.write("PlayResY: 1920\n")
             f.write("WrapStyle: 1\n\n")
 
             f.write("[V4+ Styles]\n")
             f.write("Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\n")
-            # Stile Titolo (Giallo, Outline nero sottile, Alto Centro con margine 150 dal top)
-            f.write(f"Style: TitleStyle,{FONT_NAME},120,&H0000FFFF,&H000000FF,&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,10,0,8,0,0,150,1\n")
-            # Stile Corpo (Bianco, Outline nero sottile, Centro Assoluto con margine 0)
+            # Stile Titolo
+            f.write(f"Style: TitleStyle,{FONT_NAME},150,&H0000FFFF,&H000000FF,&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,10,0,8,0,0,150,1\n")
+            # Stile Corpo
             f.write(f"Style: BodyStyle,{FONT_NAME},100,&H00FFFFFF,&H000000FF,&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,10,0,5,0,0,0,1\n\n")
 
             f.write("[Events]\n")
             f.write("Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n")
             
+            # Il titolo appare a schermo ma non viene pronunciato
             if title_text:
-                # Il titolo parte a 0.2s e rimane per sempre
                 f.write(f"Dialogue: 0,0:00:00.20,9:59:59.99,TitleStyle,,0,0,0,,{title_text.upper()}\n")
             
             for start, end, word_text in word_timings:
@@ -188,7 +147,7 @@ def add_narration_core(video_path: str, text_input) -> dict:
         ass_path_safe = ass_path.replace("\\", "/").replace(":", "\\:")
         fonts_dir_safe = FONTS_DIR_ABS.replace("\\", "/").replace(":", "\\:")
         
-        # Aggiungiamo un ritardo di 200ms all'audio finale per matchare l'inizio del video
+        # Aggiungiamo un ritardo di 200ms all'audio per matchare l'offset
         filter_complex = (
             f"[0:v]ass='{ass_path_safe}':fontsdir='{fonts_dir_safe}'[v_out];"
             f"[1:a]adelay=200|200,volume=1.2[a_out]"

@@ -4,7 +4,7 @@ import os
 from rich.console import Console
 
 # Import moduli CLI
-from src.cli import download, resize, cut, narrate, play, manage,write, batch
+from src.cli import download, resize, cut, narrate, play, manage,write, batch, reddit
 
 # Import funzioni CORE
 from src.core.downloader import download_video_core

@@ -5,6 +5,7 @@ from rich.console import Console
 
 # Importiamo i nostri moduli esistenti
 from src.core.writer import generate_script_core, save_script_to_file
+from src.core.reddit import get_reddit_story_core
 from src.core.downloader import download_video_core
 from src.core.cutter import cut_video_interval_core
 from src.core.resizer import convert_to_vertical_core
@@ -52,15 +53,26 @@ def run_batch_process():
         console.rule(f"[bold yellow]Job #{i+1}: {job['topic']}[/bold yellow]")
         
         try:
-            # --- STEP 1: SCRITTURA SCRIPT (AI) ---
-            console.print("[1/5] 🧠 Generazione Script con Gemini...")
-            res_write = generate_script_core(job["topic"])
+            # --- STEP 1: RECUPERO STORIA (AI o REDDIT) ---
+            topic = job["topic"]
+            
+            # Bivio: Se è un link di Reddit, usa lo scraper. Altrimenti, usa Gemini.
+            if topic.startswith("http") and "reddit.com" in topic:
+                console.print("[1/5] 👽 Estrazione storia da Reddit...")
+                res_write = get_reddit_story_core(topic)
+                # Creiamo un finto topic testuale per dare un nome sensato al file JSON salvato
+                safe_topic = "reddit_story" 
+            else:
+                console.print("[1/5] 🧠 Generazione Script con Gemini...")
+                res_write = generate_script_core(topic)
+                safe_topic = topic
+
             if not res_write["success"]:
-                raise Exception(f"Errore AI: {res_write['error']}")
+                raise Exception(f"Errore Creazione Storia: {res_write['error']}")
             
             script_data = res_write["data"]
-            script_path = save_script_to_file(job["topic"], script_data)
-            console.print(f"      📝 Script salvato: {os.path.basename(script_path)}")
+            script_path = save_script_to_file(safe_topic, script_data)
+            console.print(f"      📝 Script pronto: {os.path.basename(script_path)}")
 
             # --- STEP 2: ACQUISIZIONE VIDEO (FIX PATH RELATIVI) ---
             source = job["source"]

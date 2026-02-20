@@ -2,6 +2,7 @@ import typer
 from rich.console import Console
 from src.core.batch import run_batch_process, load_jobs
 
+
 app = typer.Typer()
 console = Console()
 
