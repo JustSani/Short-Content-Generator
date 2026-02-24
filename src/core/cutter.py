@@ -1,85 +1,73 @@
 import os
+import random
 import subprocess
-from src.utils.time_utils import parse_time_str
 from src.utils.naming import get_step_filename
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 PROCESSED_DIR = os.path.join(BASE_DIR, "data", "processed")
 
-def cut_video_interval_core(input_path: str, start_str: str, end_str: str) -> dict:
-    """
-    Taglia un video usando 'Input Seeking' (molto più veloce) e re-encoding veloce.
-    """
-    if not os.path.exists(input_path):
-        return {"success": False, "error": f"File non trovato: {input_path}"}
-
-    os.makedirs(PROCESSED_DIR, exist_ok=True)
-
+def get_video_duration(file_path: str) -> float:
+    """Restituisce la durata del video in secondi usando ffprobe."""
     try:
-        # Convertiamo i tempi in secondi
-        start_sec = parse_time_str(start_str)
-        end_sec = parse_time_str(end_str)
-
-        if start_sec >= end_sec:
-            return {"success": False, "error": "Il tempo di inizio deve essere minore della fine."}
-
-        # CALCOLO DURATA (Necessario per Input Seeking)
-        # Quando usiamo -ss prima dell'input, il timestamp riparte da 0.
-        # Quindi non possiamo usare -to (tempo finale), ma dobbiamo dire "dura X secondi".
-        duration = end_sec - start_sec
-
-        # --- NUOVA GESTIONE NOME ---
-        safe_start = start_str.replace(":", "-")
-        safe_end = end_str.replace(":", "-")
-        
-        output_filename = get_step_filename(input_path, f"CUT_{safe_start}_{safe_end}")
-        output_path = os.path.join(PROCESSED_DIR, output_filename)
-        # ---------------------------
-
-        # Costruiamo il comando FFmpeg OTTIMIZZATO
         cmd = [
-            "ffmpeg",
-            "-y", 
-            
-            # --- INPUT SEEKING (La chiave della velocità) ---
-            # Mettere -ss PRIMA di -i fa saltare ffmpeg direttamente al punto
-            "-ss", str(start_sec),
-            
-            "-i", input_path,       # Input
-            
-            "-t", str(duration),    # Durata del taglio (non punto finale)
-            
-            # --- ENCODING VELOCE ---
-            "-c:v", "libx264",      # Codec Video
-            "-preset", "ultrafast", # <--- CAMBIATO: Massima velocità
-            "-crf", "23",           # Qualità standard
-            "-c:a", "aac",          # Codec Audio
-            "-b:a", "128k",
-            "-movflags", "+faststart",
-            
-            "-map", "0",
-            output_path
+            "ffprobe", "-v", "error", "-show_entries", "format=duration",
+            "-of", "default=noprint_wrappers=1:nokey=1", file_path
         ]
+        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+        return float(result.stdout.strip())
+    except Exception:
+        return 0.0
 
-        # Eseguiamo
+def cut_video_interval_core(input_path: str, start: str, end: str) -> dict:
+    """Taglio manuale classico (se l'utente specifica start ed end)."""
+    os.makedirs(PROCESSED_DIR, exist_ok=True)
+    output_filename = get_step_filename(input_path, f"CUT_{start.replace(':', '')}_{end.replace(':', '')}")
+    output_path = os.path.join(PROCESSED_DIR, output_filename)
+
+    cmd = ["ffmpeg", "-y", "-i", input_path, "-ss", start, "-to", end, "-c:v", "libx264", "-preset", "fast", "-c:a", "aac", output_path]
+    
+    try:
         subprocess.run(cmd, check=True, capture_output=True)
-
-        return {
-            "success": True,
-            "path": output_path,
-            "original_path": input_path,
-            "start": start_str,
-            "end": end_str
-        }
-
+        return {"success": True, "path": output_path}
     except subprocess.CalledProcessError as e:
-        error_message = e.stderr.decode('utf-8') if e.stderr else str(e)
-        return {
-            "success": False,
-            "error": f"Errore FFmpeg: {error_message}"
-        }
-    except Exception as e:
-        return {
-            "success": False,
-            "error": str(e)
-        }
+        return {"success": False, "error": e.stderr.decode()}
+
+def cut_video_random_core(input_path: str, target_duration: float) -> dict:
+    """
+    Sceglie un punto casuale nel video e taglia esattamente la durata richiesta.
+    """
+    os.makedirs(PROCESSED_DIR, exist_ok=True)
+    
+    total_duration = get_video_duration(input_path)
+    
+    # Se il video originale è più corto o uguale all'audio, partiamo dall'inizio
+    if total_duration <= target_duration:
+        start_time = 0.0
+    else:
+        # Il punto di partenza massimo per non finire "fuori" dal video
+        max_start = total_duration - target_duration
+        start_time = random.uniform(0, max_start)
+    
+    # Formattiamo il timestamp casuale in secondi
+    start_str = f"{start_time:.2f}"
+    duration_str = f"{target_duration:.2f}"
+    
+    output_filename = get_step_filename(input_path, f"CUT_RANDOM")
+    output_path = os.path.join(PROCESSED_DIR, output_filename)
+
+    cmd = [
+        "ffmpeg", "-y",
+        "-ss", start_str,        # Vai al punto casuale velocemente
+        "-i", input_path,        # Leggi il video
+        "-t", duration_str,      # Taglia esattamente per la durata dell'audio
+        "-c:v", "libx264",
+        "-preset", "fast",
+        "-c:a", "aac",
+        output_path
+    ]
+    
+    try:
+        subprocess.run(cmd, check=True, capture_output=True)
+        return {"success": True, "path": output_path, "start_time": start_time}
+    except subprocess.CalledProcessError as e:
+        return {"success": False, "error": e.stderr.decode()}

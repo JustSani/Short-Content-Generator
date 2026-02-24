@@ -1,7 +1,7 @@
 import os
 import json
 import re
-import google.generativeai as genai
+from google import genai
 from dotenv import load_dotenv
 
 # Carica la chiave dal file .env
@@ -11,7 +11,8 @@ API_KEY = os.getenv("GEMINI_API_KEY")
 if not API_KEY:
     raise ValueError("❌ ERRORE: Chiave API Gemini non trovata nel file .env!")
 
-genai.configure(api_key=API_KEY)
+# Nuova inizializzazione del Client GenAI
+client = genai.Client(api_key=API_KEY)
 
 def clean_json_string(text: str) -> str:
     """Pulisce la risposta dell'AI se include markdown"""
@@ -20,38 +21,32 @@ def clean_json_string(text: str) -> str:
     return text.strip()
 
 def generate_script_core(topic: str) -> dict:
-    # Usiamo il modello stabile e gratuito
-    model = genai.GenerativeModel('gemini-3-flash-preview')
-
     prompt = f"""
-    Sei un esperto sceneggiatore di video Short/TikTok virali.
-    Il tuo compito è scrivere uno script coinvolgente sull'argomento: "{topic}".
+    Sei un Copywriter Virale per TikTok. Scrivi uno script su: "{topic}".
     
-    REGOLE RIGIDE:
-    1. Rispondi ESCLUSIVAMENTE con un oggetto JSON valido. Niente testo prima o dopo.
-    2. Il JSON deve avere due chiavi: "title" e "text".
-    3. "title": Gancio breve, scioccante, tutto in MAIUSCOLO (max 6 parole).
-    4. "text": Script da leggere (circa 130-150 parole).
-       - Inizia con un hook forte.
-       - Linguaggio semplice e diretto.
-       - Niente hashtag o emoji.
-       - Lingua: ITALIANO.
+    REGOLE DI SCRITTURA:
+    1. HOOK VISIVO/UDITIVO: La prima frase deve fermare lo scroll.
+    2. RITMO VELOCE: Usa frasi brevi. Niente subordinate complesse.
+    3. NO FILLER: Niente "Ciao ragazzi". Inizia subito con l'azione.
+    4. LINGUAGGIO: Italiano naturale, colloquiale.
+    5. DURATA: Target 140 parole.
 
-    Esempio Output:
+    FORMATO OUTPUT OBBLIGATORIO (JSON PURO):
     {{
-        "title": "NON CREDERAI A QUESTO!",
-        "text": "Sapevi che le banane sono radioattive? Esatto, contengono potassio..."
+        "title": "TITOLO BREVE E MAIUSCOLO (MAX 6 PAROLE), IMPORTANTE CHE CONTENGA IL NOME DELLA SERIE O FILM",
+        "text": "Qui inserisci tutto il testo che verrà letto dal narratore. Niente emoji."
     }}
     """
 
     try:
-        response = model.generate_content(prompt)
+        # Nuova sintassi per la generazione
+        response = client.models.generate_content(
+            model='gemini-3-flash-preview',
+            contents=prompt,
+        )
         clean_text = clean_json_string(response.text)
         
-        # --- CORREZIONE QUI ---
-        # Usiamo json.loads (stringa) invece di json.load (file)
         script_data = json.loads(clean_text)
-        # ----------------------
         
         if "title" not in script_data or "text" not in script_data:
             return {"success": False, "error": "JSON non valido."}

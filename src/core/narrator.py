@@ -24,6 +24,18 @@ PITCH = "-14Hz"
 WHISPER_MODEL_SIZE = "medium" 
 WHISPER_DEVICE = "cpu" 
 
+def get_audio_duration(file_path: str) -> float:
+    """Restituisce la durata di un file audio/video in secondi usando ffprobe."""
+    try:
+        cmd = [
+            "ffprobe", "-v", "error", "-show_entries", "format=duration",
+            "-of", "default=noprint_wrappers=1:nokey=1", file_path
+        ]
+        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+        return float(result.stdout.strip())
+    except Exception:
+        return 0.0
+
 def clean_text_display(text: str) -> str:
     """Pulisce il testo per la visualizzazione a video"""
     return text.strip()

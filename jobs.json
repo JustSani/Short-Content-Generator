@@ -1,12 +1,110 @@
 [
     {
         "status": "done",
-        "topic": "https://www.reddit.com/r/stories/comments/1r9o75o/this_guy_continued_to_hit_on_my_wife_for_the/",
+        "topic": "Ben 10: La verità inquietante sulla trasformazione in Ghostfreak",
         "source": "data/raw/minecraft1.mp4",
-        "start": "02:01:00",
-        "end": "02:02:40",
-        "notes": "Test reddit post",
-        "error": "File non trovato! Cercato in:\n - C:\\Users\\fabio\\Desktop\\Desktop\\Vallauri\\Progetti\\Short-Content-Generator\\data/raw/minecraft_parkour.mp4\n - data/raw/minecraft_parkour.mp4",
-        "last_update": "2026-02-20 17:34:07"
+        "start": null,
+        "end": null,
+        "notes": "Curiosità Ben 10",
+        "last_update": "2026-02-21 15:35:22"
+    },
+    {
+        "status": "done",
+        "topic": "Avatar: Il destino orribile dei nomadi dell'aria che non ti hanno detto",
+        "source": "data/raw/minecraft1.mp4",
+        "start": null,
+        "end": null,
+        "notes": "Curiosità Avatar The Last Airbender",
+        "last_update": "2026-02-21 15:56:14"
+    },
+    {
+        "status": "done",
+        "topic": "Ed, Edd n Eddy: La teoria del purgatorio è reale? Ecco le prove",
+        "source": "data/raw/minecraft1.mp4",
+        "start": null,
+        "end": null,
+        "notes": "Teorie Cartoni Animati",
+        "last_update": "2026-02-21 16:11:56"
+    },
+    {
+        "status": "done",
+        "topic": "Teen Titans: Il segreto mai rivelato dietro la maschera di Slade",
+        "source": "data/raw/minecraft1.mp4",
+        "start": null,
+        "end": null,
+        "notes": "Curiosità Teen Titans 2003",
+        "last_update": "2026-02-21 16:33:38"
+    },
+    {
+        "status": "done",
+        "topic": "Naruto: Perché il villaggio della foglia è più crudele di quanto ricordi",
+        "source": "data/raw/minecraft1.mp4",
+        "start": null,
+        "end": null,
+        "notes": "Analisi Anime",
+        "last_update": "2026-02-21 16:50:16"
+    },
+    {
+        "status": "done",
+        "topic": "Code Lyoko: Cosa succedeva davvero agli studenti catturati da X.A.N.A.?",
+        "source": "data/raw/minecraft1.mp4",
+        "start": null,
+        "end": null,
+        "notes": "Curiosità Code Lyoko",
+        "last_update": "2026-02-21 17:08:45"
+    },
+    {
+        "status": "done",
+        "topic": "Danny Phantom: La macabra biologia dei mezzi-fantasmi",
+        "source": "data/raw/minecraft1.mp4",
+        "start": null,
+        "end": null,
+        "notes": "Curiosità Danny Phantom",
+        "last_update": "2026-02-21 17:23:04"
+    },
+    {
+        "status": "done",
+        "topic": "I Fantagenitori: La teoria scioccante sui desideri e la depressione di Timmy",
+        "source": "data/raw/minecraft1.mp4",
+        "start": null,
+        "end": null,
+        "notes": "Teorie Nickelodeon",
+        "last_update": "2026-02-21 17:36:53"
+    },
+    {
+        "status": "done",
+        "topic": "Cars: Il dettaglio raccapricciante su come nascono le auto in questo mondo",
+        "source": "data/raw/minecraft1.mp4",
+        "start": null,
+        "end": null,
+        "notes": "Curiosità Disney Pixar",
+        "last_update": "2026-02-21 17:50:38"
+    },
+    {
+        "status": "done",
+        "topic": "Kung Fu Panda: La vera origine del trauma di Tai Lung",
+        "source": "data/raw/minecraft1.mp4",
+        "start": null,
+        "end": null,
+        "notes": "Analisi Film d'animazione",
+        "last_update": "2026-02-21 18:03:44"
+    },
+    {
+        "status": "done",
+        "topic": "Regular Show: Perché il parco è intrappolato in un loop temporale anni '80?",
+        "source": "data/raw/minecraft1.mp4",
+        "start": null,
+        "end": null,
+        "notes": "Curiosità Cartoon Network",
+        "last_update": "2026-02-21 18:16:01"
+    },
+    {
+        "status": "done",
+        "topic": "Dragon Ball Z: L'orrore nascosto nella linea temporale di Trunks del futuro",
+        "source": "data/raw/minecraft1.mp4",
+        "start": null,
+        "end": null,
+        "notes": "Curiosità Anime Boy-niche",
+        "last_update": "2026-02-21 18:29:18"
     }
 ]
